@@ -399,3 +399,4 @@ FodyWeavers.xsd
 
 # Secrets
 *.secrets.json
+/code/Luval.Coach/luval.coach.exe-prod-secrets.json
