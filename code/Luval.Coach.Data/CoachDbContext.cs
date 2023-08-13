@@ -10,8 +10,8 @@ namespace Luval.Coach.Data
 {
     public class CoachDbContext : DbContext, ICoachDbContext
     {
-        public DbSet<CoachNote> CoachNotes { get; set; }
-        public DbSet<CoachNoteResponse> CoachNoteResponses { get; set; }
+        public DbSet<CoachSession> CoachNotes { get; set; }
+        public DbSet<CoachNote> CoachNoteResponses { get; set; }
         public DbSet<Metric> Metrics { get; set; }
         public DbSet<MetricCategory> MetricCategories { get; set; }
         public DbSet<MetricValue> MetricValues { get; set; }

@@ -40,6 +40,11 @@ namespace Luval.Coach
             builder.Services.AddServerSideBlazor();
             builder.Services.AddSingleton<WeatherForecastService>();
 
+            /*** NOTIFICATIONS ***/
+            //http://mkumaran.net/2021/Blazor-PWA/
+            //https://github.com/web-push-libs/web-push-csharp
+            //https://github.com/coryjthompson/WebPushDemo
+
             /*** OAuth Implementation ***/
 
             // Context to handle database requests
