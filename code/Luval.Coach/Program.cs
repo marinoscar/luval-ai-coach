@@ -1,5 +1,8 @@
 using Luval.Coach.Data;
 using Luval.Framework.Core.Configuration;
+using Luval.Framework.Security.Authorization;
+using Luval.Framework.Security.Authorization.Entities;
+using Luval.Framework.Security.MySql;
 using Luval.Logging.Configuration;
 using Luval.Logging.Providers;
 using Microsoft.AspNetCore.Authentication;
@@ -7,10 +10,12 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Reflection;
+using System.Security.Claims;
 using ConfigurationProvider = Luval.Framework.Core.Configuration.ConfigurationProvider;
 using IConfigurationProvider = Luval.Framework.Core.Configuration.IConfigurationProvider;
 
@@ -26,6 +31,8 @@ namespace Luval.Coach
             var config = GetConfigurationProvider();
             var logging = CreateLogging();
 
+            InitializeConnection(config);
+
             builder.Services.AddSingleton(config);
             builder.Services.AddSingleton<ILogger>(logging);
 
@@ -34,6 +41,12 @@ namespace Luval.Coach
             builder.Services.AddSingleton<WeatherForecastService>();
 
             /*** OAuth Implementation ***/
+
+            // Context to handle database requests
+            builder.Services.AddSingleton<IAuthorizationService>(new AuthorizationService(new MySqlAuthorizationDbContext(config.Get("connectionString"))));
+            // Adds claims to the principal
+            builder.Services.AddScoped<IClaimsTransformation, ClaimsTransformation>();
+
             builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie();
             builder.Services.AddAuthentication().AddGoogle(options =>
             {
@@ -42,7 +55,7 @@ namespace Luval.Coach
                 options.CallbackPath = "/signin-google";
                 options.ClaimActions.MapJsonKey("urn:google:profile", "link");
                 options.ClaimActions.MapJsonKey("urn:google:image", "picture");
-                BindGoogleEvents(options.Events, logging);
+                BindGoogleEvents(options.Events, logging, config);
 
             });
             builder.Services.AddHttpContextAccessor();
@@ -80,7 +93,7 @@ namespace Luval.Coach
             app.Run();
         }
 
-        static void BindGoogleEvents(OAuthEvents events, ILogger logger)
+        static void BindGoogleEvents(OAuthEvents events, ILogger logger, IConfigurationProvider configProvider)
         {
             var ticketRecieveHandler = events.OnTicketReceived;
             var redirectToAuthorizationEndpointHander = events.OnRedirectToAuthorizationEndpoint;
@@ -93,7 +106,7 @@ namespace Luval.Coach
                 var claims = e.Principal?.Claims?.Select(i => new { Type = i.Type, Value = i.Value }).ToList();
                 var json = JsonConvert.SerializeObject(new
                 {
-                    Claims= claims,
+                    Claims = claims,
                     AuthenticationScheme = e.Result?.Ticket?.AuthenticationScheme,
                     Properties = e.Result?.Ticket?.Properties,
                     Succeeded = e.Result?.Succeeded,
@@ -102,6 +115,8 @@ namespace Luval.Coach
                     IdentityName = e.Result?.Principal?.Identity?.Name
                 }, Formatting.Indented);
                 logger.LogDebug($"OnTicketReceived - Data: {json}");
+                
+                RegisterUser(configProvider, e.Principal);
 
                 return ticketRecieveHandler(e);
             };
@@ -203,6 +218,31 @@ namespace Luval.Coach
         {
             return new ConfigurationProvider(JsonFileConfigurationProvider.LoadOrCreateProd(),
                 JsonFileConfigurationProvider.LoadOrCreateProd(true));
+        }
+
+        static void InitializeConnection(IConfigurationProvider config)
+        {
+            var conn = config.Get("connectionString");
+            var context = new MySqlAuthorizationDbContext(conn);
+            var canConnect = context.Database.CanConnect();
+            if (canConnect)
+            {
+                var script = context.Database.GenerateCreateScript();
+                var isCreated = context.Database.EnsureCreated();
+                if (isCreated)
+                {
+                    context.Database.Migrate();
+                }
+            }
+        }
+
+        static void RegisterUser(IConfigurationProvider config, ClaimsPrincipal principal)
+        {
+            var conn = config.Get("connectionString");
+            var context = new MySqlAuthorizationDbContext(conn);
+            var service = new AuthorizationService(context);
+            var user = OAuthUser.Create(principal, "Google");
+            var i = service.RegisterUserAsync(user, CancellationToken.None).Result;
         }
 
     }

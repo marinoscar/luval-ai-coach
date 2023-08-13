@@ -13,7 +13,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\luval-framework\code\Luval.Framework.Core\Luval.Framework.Core.csproj" />
+    <ProjectReference Include="..\..\..\luval-framework\code\Luval.Framework.Data\Luval.Framework.Data.csproj" />
+    <ProjectReference Include="..\..\..\luval-framework\code\Luval.Framework.Security\Luval.Framework.Security.csproj" />
     <ProjectReference Include="..\..\..\luval-framework\code\Luval.Framework.Services\Luval.Framework.Services.csproj" />
+    <ProjectReference Include="..\Luval.Coach.Data\Luval.Coach.Data.csproj" />
+    <ProjectReference Include="..\Luval.Coach.Services\Luval.Coach.Services.csproj" />
+    <ProjectReference Include="..\Luval.Framework.Security.MySql\Luval.Framework.Security.MySql.csproj" />
   </ItemGroup>
 
   <ItemGroup>
